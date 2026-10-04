@@ -148,21 +148,23 @@ jobs:
           rm "${LLVM_MINGW_TARBALL}"
           ls
 
-      - name: Fetch VC++ runtime (your own copy)
-        env:
-          # Secret or repo variable: URL of a private zip containing the x64
-          # VC++ DLLs (see tools/fetch-vcruntime.md). Not redistributable
-          # publicly, so keep the artifact private.
-          VCRUNTIME_URL: ${{ secrets.VCRUNTIME_ZIP_URL }}
+      # Private fork only: the Microsoft VC++ x64 runtime DLLs are committed
+      # as prebuilt/vcruntime.zip (DLLs at the zip root, unmodified). Do not
+      # make this repo or the built IPA public with these included.
+      - name: Unpack VC++ runtime (committed zip, private fork)
         run: |
           set -euo pipefail
-          if [ -z "${VCRUNTIME_URL:-}" ]; then
-            echo "::error::Set secret VCRUNTIME_ZIP_URL (see tools/fetch-vcruntime.md)"; exit 1
-          fi
-          mkdir -p app/Madeira/x86_64-vcruntime
-          curl -fsSL "$VCRUNTIME_URL" -o /tmp/vcruntime.zip
-          unzip -o /tmp/vcruntime.zip -d app/Madeira/x86_64-vcruntime
-          ls app/Madeira/x86_64-vcruntime
+          dir=app/Madeira/x86_64-vcruntime
+          mkdir -p "$dir"
+          unzip -o prebuilt/vcruntime.zip -d "$dir"
+          missing=0
+          for f in concrt140 msvcp140 msvcp140_1 msvcp140_2 msvcp140_atomic_wait \
+                   msvcp140_codecvt_ids vcamp140 vccorlib140 vcomp140 \
+                   vcruntime140 vcruntime140_1 vcruntime140_threads; do
+            [ -f "$dir/$f.dll" ] || { echo "::error::missing $dir/$f.dll (zip must have DLLs at its root)"; missing=1; }
+          done
+          [ "$missing" = 0 ] || exit 1
+          ls "$dir"
 
       # ---- native build chains, same order as docs/BUILDING.md ----
       - name: GnuTLS / GMP / Nettle
