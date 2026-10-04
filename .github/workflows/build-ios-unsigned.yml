@@ -70,6 +70,7 @@ jobs:
             -DLLVM_TARGET_ARCH=host -DLLVM_TARGETS_TO_BUILD= \
             -DLLVM_ENABLE_PROJECTS= -DLLVM_BUILD_TOOLS=Off \
             -DLLVM_INCLUDE_TESTS=Off -DLLVM_ENABLE_ZLIB=Off \
+            -DCMAKE_MACOSX_BUNDLE=OFF \
             -DLLVM_TABLEGEN="$PWD/llvm-host-build/bin/llvm-tblgen"
           cmake --build llvm-ios-build
 
