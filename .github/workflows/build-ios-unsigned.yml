@@ -66,6 +66,13 @@ jobs:
           # CMAKE_SYSTEM_NAME is "Darwin". With "iOS" it falls through to the
           # GNU branch and passes -Wl,--gc-sections, which Apple's ld rejects
           # ("ld: unknown options: --gc-sections" while linking bin/llvm-ar).
+          #
+          # LLVM_ENABLE_PLUGINS=OFF / LLVM_INCLUDE_EXAMPLES=OFF: with
+          # CMAKE_SYSTEM_NAME=iOS LLVM thinks loadable modules work and builds
+          # LLVMHello/Bye as MODULE libraries. Linking them fails ("ld: unknown
+          # file type .../LLVMHello.def"), and nothing downstream needs them -
+          # only lib/*.a is consumed. LTO/Remarks shared libs are skipped for
+          # the same reason.
           cmake -S llvm-project/llvm -B llvm-ios-build -G Ninja \
             -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_BUILD_TYPE=Release \
@@ -75,6 +82,8 @@ jobs:
             -DLLVM_ENABLE_PROJECTS= -DLLVM_BUILD_TOOLS=Off \
             -DLLVM_INCLUDE_TESTS=Off -DLLVM_ENABLE_ZLIB=Off \
             -DCMAKE_MACOSX_BUNDLE=OFF -DLLVM_NO_DEAD_STRIP=ON \
+            -DLLVM_ENABLE_PLUGINS=OFF -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_TOOL_LTO_BUILD=OFF -DLLVM_TOOL_REMARKS_SHLIB_BUILD=OFF \
             -DLLVM_TABLEGEN="$PWD/llvm-host-build/bin/llvm-tblgen"
 
           # Keep the full build output and surface the first real error, so a
