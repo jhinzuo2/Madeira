@@ -11,9 +11,13 @@ if [ ! -f "$B/CMakeCache.txt" ]; then
     # an empty processor ("Unsupported processor type ."). Set it explicitly.
     # TUNE_CPU=none: the default "native" probes /proc/cpuinfo (Linux only),
     # which does not exist on the macOS runner.
+    # FEX_IOS_HOST: switches on the iOS port throughout FEXCore (Core.cpp only
+    # declares IosFfsBypassLog/IosCbEntryLog under it, but uses them always).
+    # The dev build had it global via CMAKE_*_FLAGS.
     cmake -S "$R/FEX" -B "$B" -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
         -DCMAKE_SYSTEM_PROCESSOR=arm64 \
         -DTUNE_ARCH=generic -DTUNE_CPU=none -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        -DCMAKE_C_FLAGS=-DFEX_IOS_HOST -DCMAKE_CXX_FLAGS=-DFEX_IOS_HOST -DCMAKE_ASM_FLAGS=-DFEX_IOS_HOST \
         -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_TESTING=OFF -DBUILD_THUNKS=OFF -DBUILD_FEXCONFIG=OFF -DBUILD_FEX_LINUX_TESTS=OFF \
         -DENABLE_FEX_ALLOCATOR=OFF -DENABLE_ASSERTIONS=OFF -DENABLE_CLANG_THUNKS=ON -DENABLE_CCACHE=ON
