@@ -5,6 +5,19 @@
 set -eu
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 B="$R/FEX/build-ios"
+
+# FEX (submodule, willfaust/FEX) calls Win32 VirtualQuery in
+# IosLogUnimplementedCASPAL without a _WIN32 guard, so the native Apple build
+# does not compile. Apply our fix to the submodule checkout. Idempotent: skipped
+# when the patch is already applied.
+P="$R/build/fex-ios/patches/arm64-caspal-probe-win32-only.patch"
+if git -C "$R/FEX" apply --check "$P" 2>/dev/null; then
+    git -C "$R/FEX" apply "$P"
+elif ! git -C "$R/FEX" apply --check -R "$P" 2>/dev/null; then
+    echo "error: $P neither applies nor is already applied to FEX" >&2
+    exit 1
+fi
+
 if [ ! -f "$B/CMakeCache.txt" ]; then
     # CMAKE_SYSTEM_PROCESSOR is left empty when cross-compiling with
     # CMAKE_SYSTEM_NAME=iOS on a fresh build dir, and FEX's CMakeLists rejects
