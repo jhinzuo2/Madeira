@@ -61,7 +61,11 @@ jobs:
             -DLLVM_INCLUDE_TESTS=Off
           cmake --build llvm-host-build --target llvm-tblgen
 
-          # iOS build, flags copied from docs/BUILDING.md
+          # iOS build, flags copied from docs/BUILDING.md.
+          # LLVM_NO_DEAD_STRIP: LLVM only uses Apple's -dead_strip when
+          # CMAKE_SYSTEM_NAME is "Darwin". With "iOS" it falls through to the
+          # GNU branch and passes -Wl,--gc-sections, which Apple's ld rejects
+          # ("ld: unknown options: --gc-sections" while linking bin/llvm-ar).
           cmake -S llvm-project/llvm -B llvm-ios-build -G Ninja \
             -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_BUILD_TYPE=Release \
@@ -70,9 +74,27 @@ jobs:
             -DLLVM_TARGET_ARCH=host -DLLVM_TARGETS_TO_BUILD= \
             -DLLVM_ENABLE_PROJECTS= -DLLVM_BUILD_TOOLS=Off \
             -DLLVM_INCLUDE_TESTS=Off -DLLVM_ENABLE_ZLIB=Off \
-            -DCMAKE_MACOSX_BUNDLE=OFF \
+            -DCMAKE_MACOSX_BUNDLE=OFF -DLLVM_NO_DEAD_STRIP=ON \
             -DLLVM_TABLEGEN="$PWD/llvm-host-build/bin/llvm-tblgen"
-          cmake --build llvm-ios-build
+
+          # Keep the full build output and surface the first real error, so a
+          # failure is readable without scrolling through thousands of lines.
+          if ! cmake --build llvm-ios-build 2>&1 | tee "$PWD/llvm-ios-build.log"; then
+            echo "::group::First failing command and error lines"
+            grep -n -m1 -A40 "^FAILED:" llvm-ios-build.log || true
+            grep -n "error:" llvm-ios-build.log | head -n 30 || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+      - name: Upload LLVM build log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-ios-build-log
+          path: toolchains/llvm-ios-build.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   build:
     needs: llvm-ios
