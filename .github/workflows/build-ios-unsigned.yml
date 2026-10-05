@@ -212,6 +212,11 @@ jobs:
 
       - name: Wine unix side
         run: |
+          # wineserver/build.sh needs llvm-objcopy (symbol rename sweep).
+          # Appended to PATH so Apple's clang is not shadowed.
+          brew list llvm >/dev/null 2>&1 || brew install llvm
+          export PATH="$PATH:$(brew --prefix llvm)/bin"
+          command -v llvm-objcopy
           bash build/ntdll-unix/build.sh
           bash build/wineserver/bootstrap.sh
           bash build/wineserver/build.sh
