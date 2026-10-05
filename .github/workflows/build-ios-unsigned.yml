@@ -267,6 +267,10 @@ jobs:
           xcrun -sdk iphoneos libtool -static -o build/dxmt-ios/libdxmt_combined.a \
             build/dxmt-ios/obj/*.o toolchains/llvm-ios-build/lib/*.a
           cp build/dxmt-ios/libdxmt_combined.a app/Madeira/libdxmt_combined.a
+          # dxmt/build-arm64ec-win.txt locates llvm-mingw via @GLOBAL_SOURCE_ROOT@
+          # (= dxmt/) + toolchains/..., but our toolchains/ sits at the repo root.
+          if [ ! -e dxmt/toolchains ]; then ln -s "$PWD/toolchains" dxmt/toolchains; fi
+          test -x dxmt/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin/arm64ec-w64-mingw32-clang
           meson setup dxmt/build-arm64ec dxmt -Dbuildtype=release \
             -Dwine_build_path=../../wine/build-arm64ec \
             --cross-file=dxmt/build-arm64ec-win.txt
