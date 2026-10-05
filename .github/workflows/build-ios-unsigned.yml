@@ -304,9 +304,11 @@ jobs:
         run: bash build/rppairing-ios/build.sh
 
       - name: Direct3D 12 runtime
-        run: |
-          bash build/madeira-d3d12/fetch-converter.sh
-          bash build/madeira-d3d12/build-pe.sh
+        # The converter dylib and headers are tracked; build/madeira-d3d12/deps.sh
+        # verifies them against their pinned hashes. fetch-converter.sh needs
+        # Apple's gitignored installer package (research/GPTK/) and is a
+        # maintainer-only step for converter updates, so CI does not run it.
+        run: bash build/madeira-d3d12/build-pe.sh
 
       - name: WoW64 (optional)
         if: ${{ inputs.wow64 }}
