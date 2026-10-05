@@ -244,6 +244,21 @@ jobs:
           test -f toolchains/llvm-project/llvm/include/llvm/IR/Module.h
           test -f toolchains/llvm-ios-build/include/llvm/Config/llvm-config.h
 
+      # airconv_context.cpp includes air_msad.h (and the other two); DXMT's meson
+      # build makes them from shaders/*.metal. build.sh only generates
+      # dxmt_command.h, so produce the airconv ones the same way (metal + xxd).
+      - name: DXMT airconv shader headers
+        run: |
+          set -euxo pipefail
+          out=build/dxmt-ios/shader-headers
+          mkdir -p "$out"
+          for n in air_msad air_samplepos air_tessellation; do
+            xcrun -sdk macosx metal -std=metal3.1 --target=air64-apple-macos14.0 \
+              -o "$out/$n.air" -c "dxmt/src/airconv/shaders/$n.metal"
+            (cd "$out" && xxd -n "$n" -i "$n.air" "$n.h")
+          done
+          ls -l "$out"
+
       - name: DXMT
         run: |
           bash build/dxmt-ios/build.sh
