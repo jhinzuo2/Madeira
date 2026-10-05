@@ -228,9 +228,30 @@ jobs:
           bash build/wine-pe/build-modules.sh
           bash build/wine-pe/build-modules.sh dcomp ktmw32
 
+      # airconv/madeira_ags include LLVM's SOURCE headers (toolchains/llvm-project/
+      # llvm/include). The LLVM cache only holds the build dirs, so fetch just
+      # the headers of the pinned release (8dfdcc7b7 = llvmorg-15.0.7).
+      - name: LLVM 15 source headers
+        run: |
+          set -euxo pipefail
+          if [ ! -f toolchains/llvm-project/llvm/include/llvm/IR/Module.h ]; then
+            rm -rf toolchains/llvm-project
+            git clone --depth 1 --filter=blob:none --sparse --branch llvmorg-15.0.7 \
+              https://github.com/llvm/llvm-project.git toolchains/llvm-project
+            git -C toolchains/llvm-project sparse-checkout set llvm/include
+          fi
+          git -C toolchains/llvm-project rev-parse HEAD | grep -q '^8dfdcc7b7'
+          test -f toolchains/llvm-project/llvm/include/llvm/IR/Module.h
+          test -f toolchains/llvm-ios-build/include/llvm/Config/llvm-config.h
+
       - name: DXMT
         run: |
           bash build/dxmt-ios/build.sh
+          # The app links libdxmt_combined.a = DXMT unix objects + the iOS LLVM
+          # archives airconv needs. build.sh only refreshes it if it exists.
+          xcrun -sdk iphoneos libtool -static -o build/dxmt-ios/libdxmt_combined.a \
+            build/dxmt-ios/obj/*.o toolchains/llvm-ios-build/lib/*.a
+          cp build/dxmt-ios/libdxmt_combined.a app/Madeira/libdxmt_combined.a
           meson setup dxmt/build-arm64ec dxmt -Dbuildtype=release \
             -Dwine_build_path=../../wine/build-arm64ec \
             --cross-file=dxmt/build-arm64ec-win.txt
@@ -238,6 +259,13 @@ jobs:
           ninja -C dxmt/build-arm64ec src/d3d11/d3d11.dll || true   # path may differ, check
           cp dxmt/build-arm64ec/src/winemetal/winemetal.dll app/Madeira/arm64ec-windows/
           find dxmt/build-arm64ec -name d3d11.dll -exec cp {} app/Madeira/arm64ec-windows/ \;
+
+      - name: DXMT compile errors (on failure)
+        if: failure()
+        run: |
+          for f in build/dxmt-ios/obj/*.err; do
+            if [ -s "$f" ]; then echo "::group::$f"; head -n 25 "$f"; echo "::endgroup::"; fi
+          done
 
       - name: In-app pairing (Rust)
         run: bash build/rppairing-ios/build.sh
