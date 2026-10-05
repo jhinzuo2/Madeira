@@ -271,8 +271,15 @@ jobs:
           # (= dxmt/) + toolchains/..., but our toolchains/ sits at the repo root.
           if [ ! -e dxmt/toolchains ]; then ln -s "$PWD/toolchains" dxmt/toolchains; fi
           test -x dxmt/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin/arm64ec-w64-mingw32-clang
+          # BUILDING.md's ../../wine/build-arm64ec assumes dxmt at research/dxmt;
+          # here it is dxmt/, so that path resolves outside the repo. Use an
+          # absolute path. winemetal also links libdbghelp, an import lib that
+          # no earlier step builds (winecrt0 and ntdll are already there).
+          MINGW="$PWD/toolchains/llvm-mingw-20260421-ucrt-macos-universal/bin"
+          PATH="$MINGW:$PATH" make -C wine/build-arm64ec -j4 dlls/dbghelp/arm64ec-windows/libdbghelp.a
+          test -f wine/build-arm64ec/dlls/dbghelp/arm64ec-windows/libdbghelp.a
           meson setup dxmt/build-arm64ec dxmt -Dbuildtype=release \
-            -Dwine_build_path=../../wine/build-arm64ec \
+            -Dwine_build_path="$PWD/wine/build-arm64ec" \
             --cross-file=dxmt/build-arm64ec-win.txt
           ninja -C dxmt/build-arm64ec src/winemetal/winemetal.dll
           ninja -C dxmt/build-arm64ec src/d3d11/d3d11.dll || true   # path may differ, check
