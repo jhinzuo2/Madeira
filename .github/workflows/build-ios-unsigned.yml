@@ -125,8 +125,15 @@ jobs:
         run: |
           brew install cmake ninja meson bison ldid p7zip
           brew install rustup || true
+          # Homebrew's rustup is keg-only: its cargo/rustc proxies are not on
+          # PATH, which later steps (build/rppairing-ios/build.sh) need.
+          RUSTUP_BIN="$(brew --prefix rustup)/bin"
+          export PATH="$RUSTUP_BIN:$HOME/.cargo/bin:$PATH"
+          echo "$RUSTUP_BIN" >> "$GITHUB_PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           rustup default stable || true
           rustup target add aarch64-apple-ios
+          cargo --version
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"   # wrc needs bison 3
 
       - name: Restore LLVM (iOS)
