@@ -178,9 +178,42 @@ jobs:
           bash build/fex-ios/build.sh
           bash build/fex-arm64ec/build.sh
 
+      # The unix-side scripts compile against a configured Wine tree
+      # (wine/build-macos: config.h + widl headers; wine/build-arm64ec:
+      # dwrite headers) and a static FreeType. None of that is in the repo.
+      - name: FreeType (iOS)
+        run: |
+          set -euxo pipefail
+          if [ ! -f research/freetype/include/ft2build.h ]; then
+            rm -rf research/freetype
+            git clone --depth 1 --branch VER-2-13-3 https://github.com/freetype/freetype.git research/freetype
+          fi
+          bash build/freetype-ios/build.sh
+
+      - name: Wine host trees (config.h + generated headers)
+        run: bash build/wine-host/build.sh
+
+      # server_ios.c's [xp] profiler reads rusage_info_v6.ri_page_wait_time_mach,
+      # which only the iOS 27 SDK declares. This runner has SDK 26.x, so drop
+      # that one diagnostic counter (it just prints pgw=0.0).
+      - name: Compat patch for iOS 26 SDK
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path("build/ntdll-unix/server_ios.c")
+          s = p.read_text()
+          old = "XP_MS( ru.ri_page_wait_time_mach - pru.ri_page_wait_time_mach )"
+          if old in s:
+              p.write_text(s.replace(old, "XP_MS( 0 )"))
+              print("patched ri_page_wait_time_mach")
+          else:
+              print("nothing to patch")
+          PY
+
       - name: Wine unix side
         run: |
           bash build/ntdll-unix/build.sh
+          bash build/wineserver/bootstrap.sh
           bash build/wineserver/build.sh
           bash build/win32u-unix/build.sh
 

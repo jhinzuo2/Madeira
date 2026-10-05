@@ -11,6 +11,14 @@ APP_LIB="$REPO_ROOT/app/Madeira/libntdll_unix.a"
 
 mkdir -p "$OBJ_DIR"
 
+# Preflight: every compile below does -include $WINE_BUILD/include/config.h.
+# If the Wine host tree was never configured, all of them die instantly.
+if [ ! -f "$WINE_BUILD/include/config.h" ]; then
+    echo "ERROR: $WINE_BUILD/include/config.h not found."
+    echo "       Configure the Wine host tree (wine/build-macos) before this step."
+    exit 1
+fi
+
 SUCCEEDED=0
 FAILED=0
 FAILED_FILES=""
@@ -41,6 +49,7 @@ compile_one() {
         SUCCEEDED=$((SUCCEEDED + 1))
     else
         echo "FAILED"
+        sed -n '1,15p' "$OBJ_DIR/$name.err" | sed 's/^/      | /'
         FAILED=$((FAILED + 1))
         FAILED_FILES="$FAILED_FILES $name"
     fi
@@ -76,6 +85,7 @@ compile_unixlib() {
         SUCCEEDED=$((SUCCEEDED + 1))
     else
         echo "FAILED"
+        sed -n '1,15p' "$OBJ_DIR/$name.err" | sed 's/^/      | /'
         FAILED=$((FAILED + 1))
         FAILED_FILES="$FAILED_FILES $name"
     fi
@@ -159,6 +169,7 @@ if xcrun -sdk iphoneos clang \
     SUCCEEDED=$((SUCCEEDED + 1))
 else
     echo "FAILED"
+    sed -n '1,15p' "$OBJ_DIR/wg_parser_apple_ios.err" | sed 's/^/      | /'
     FAILED=$((FAILED + 1))
     FAILED_FILES="$FAILED_FILES wg_parser_apple_ios"
 fi
@@ -202,6 +213,11 @@ echo ""
 echo "Results: $SUCCEEDED succeeded, $FAILED failed"
 if [ -n "$FAILED_FILES" ]; then
     echo "Failed:$FAILED_FILES"
+fi
+
+if [ "$FAILED" -gt 0 ]; then
+    echo "::error::$FAILED file(s) failed to compile:$FAILED_FILES"
+    exit 1
 fi
 
 echo ""
