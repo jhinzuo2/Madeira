@@ -35,5 +35,7 @@ if [ ! -f "$B/CMakeCache.txt" ]; then
         -DBUILD_TESTING=OFF -DBUILD_THUNKS=OFF -DBUILD_FEXCONFIG=OFF -DBUILD_FEX_LINUX_TESTS=OFF \
         -DENABLE_FEX_ALLOCATOR=OFF -DENABLE_ASSERTIONS=OFF -DENABLE_CLANG_THUNKS=ON -DENABLE_CCACHE=ON
 fi
-cmake --build "$B" --target FEXCore FEXCore_Base
-ls "$B/FEXCore/Source/"*.a
+# JemallocLibs (AllocatorHooks.cpp) is not a dependency of FEXCore, but the app
+# links -lJemallocLibs (app/Madeira.xcodeproj), so build it explicitly.
+cmake --build "$B" --target FEXCore FEXCore_Base JemallocLibs
+ls "$B/FEXCore/Source/libFEXCore.a" "$B/FEXCore/Source/libFEXCore_Base.a" "$B/FEXCore/Source/libJemallocLibs.a"
